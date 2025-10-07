@@ -71,14 +71,17 @@ def compute_tabelle(df_played):
     tbl["punkte"] = 3 * tbl["siege"] + tbl["unentschieden"]
     tabelle_list = []
     for team in tbl.index:
+        tore = int(tbl.at[team, "tore"])
+        geg = int(tbl.at[team, "geg"])
         tabelle_list.append({
             "team": team,
             "spiele": int(tbl.at[team, "spiele"]),
             "punkte": int(tbl.at[team, "punkte"]),
-            "tore": int(tbl.at[team, "tore"]),
-            "geg": int(tbl.at[team, "geg"])
+            "tore": tore,
+            "geg": geg,
+            "tordifferenz": tore - geg
         })
-    tabelle_list.sort(key=lambda x: (x["punkte"], x["tore"] - x["geg"]), reverse=True)
+    tabelle_list.sort(key=lambda x: (x["punkte"], x["tordifferenz"], x["tore"]), reverse=True)
     return tabelle_list
 
 # === Modelltraining ===
