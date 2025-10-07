@@ -5,18 +5,21 @@ import statsmodels.api as sm
 from scipy.stats import poisson
 from jinja2 import Environment, FileSystemLoader
 
+# === Pfade ===
 DATA_DIR = "data"
-DATA_CSV = os.path.join(DATA_DIR, "results.csv")
+DATA_CSV = os.path.join(DATA_DIR, "results.csv")  # Passe an, falls dein CSV anders heißt
 TEMPLATE_DIR = "templates"
 TEMPLATE_INDEX = "index.html"
 OUTPUT_DIR = "docs"
 
+# === Laden der Datendatei ===
 def load_data():
     df = pd.read_csv(DATA_CSV)
     df["tore_heim"] = pd.to_numeric(df.get("tore_heim"), errors="coerce")
     df["tore_auswärts"] = pd.to_numeric(df.get("tore_auswärts"), errors="coerce")
     return df
 
+# === Tabelle erzeugen ===
 def compute_tabelle(df_played):
     teams = sorted(set(df_played["heim"].dropna().tolist() + df_played["auswärts"].dropna().tolist()))
     tbl = pd.DataFrame(0, index=teams, columns=["spiele","siege","unentschieden","niederlagen","tore","geg"])
@@ -53,35 +56,44 @@ def compute_tabelle(df_played):
     tabelle_list.sort(key=lambda x: (x["punkte"], x["tore"] - x["geg"]), reverse=True)
     return tabelle_list
 
+# === Modelltraining ===
 def train_model(df_played):
     teams = sorted(set(df_played["heim"].dropna().tolist() + df_played["auswärts"].dropna().tolist()))
     idx = {team: i for i, team in enumerate(teams)}
-    n = df_played.shape[0]
+    n = len(df_played)
+    # Dummy-Matrizen
     Xh = np.zeros((n, len(teams)))
     Xa = np.zeros((n, len(teams)))
     for i, row in enumerate(df_played.itertuples()):
         Xh[i, idx[row.heim]] = 1
         Xa[i, idx[row.auswärts]] = 1
-    y_diff = (df_played["tore_heim"] - df_played["tore_auswärts"]).values
     Xdiff = Xh - Xa
-    # Wir fügen Konstanten-Spalte explizit
-    X = sm.add_constant(Xdiff)
+    X = sm.add_constant(Xdiff)  # fügt konstante Spalte hinzu → Spaltenanzahl = 1 + len(teams)
+    y_diff = (df_played["tore_heim"] - df_played["tore_auswärts"]).values
     model = sm.OLS(y_diff, X)
     res = model.fit()
     return res, teams
 
+# === Prognose für ein Spiel ===
 def predict_match(res, teams_model, home, away):
-    # Prüfen, ob home und away im teams_model sind
     if home not in teams_model or away not in teams_model:
         return {"home_win": 1/3, "draw": 1/3, "away_win": 1/3, "lam_h": None, "lam_a": None}
-    # Erzeuge Vektor der gleichen Dimension wie beim Training Xdiff
-    vec = np.zeros(len(teams_model))
-    vec[teams_model.index(home)] = 1
-    vec[teams_model.index(away)] = -1
-    # Erzeuge eine Zeile mit Konstante + vec
-    Xrow = sm.add_constant(pd.DataFrame([vec])).values  # ergibt eine Matrix 1×(len(teams_model)+1)
-    # Vorhersage der Differenz
-    est_diff = res.predict(Xrow)[0]
+    # Ensure the exogenous vector has the same length as the fitted params
+    # res.params corresponds to [const, team_0, team_1, ..., team_{m-1}]
+    p_len = len(res.params)
+    expected_teams = p_len - 1
+    vec = np.zeros(expected_teams)
+    # Safe mapping: only set indices that exist within the expected size
+    idx_home = teams_model.index(home)
+    idx_away = teams_model.index(away)
+    if idx_home < expected_teams:
+        vec[idx_home] = 1
+    if idx_away < expected_teams:
+        vec[idx_away] = -1
+    # Build Xrow as [1, vec...]
+    Xrow = np.concatenate(([1.0], vec)).reshape(1, -1)
+    # Compute predicted difference via dot product to avoid statsmodels shape issues
+    est_diff = float(np.dot(Xrow, res.params))
     total_lambda = 5.0
     lam_h = max(0.1, (total_lambda + est_diff) / 2)
     lam_a = max(0.1, total_lambda - lam_h)
@@ -96,14 +108,9 @@ def predict_match(res, teams_model, home, away):
                 p_draw += pk
             else:
                 p_away += pk
-    return {
-        "home_win": p_home,
-        "draw": p_draw,
-        "away_win": p_away,
-        "lam_h": lam_h,
-        "lam_a": lam_a
-    }
+    return {"home_win": p_home, "draw": p_draw, "away_win": p_away, "lam_h": lam_h, "lam_a": lam_a}
 
+# === Hauptfunktion, Bau der Seite ===
 def build_site():
     df = load_data()
     df_played = df.dropna(subset=["tore_heim", "tore_auswärts"]).copy()
@@ -125,10 +132,10 @@ def build_site():
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
     template = env.get_template(TEMPLATE_INDEX)
     html = template.render(
-        title = "Prognose & Spielplan",
-        predictions = predictions,
-        tabelle = tabelle_list,
-        spiele_history = spiele_history
+        title="Prognose & Spielplan",
+        predictions=predictions,
+        tabelle=tabelle_list,
+        spiele_history=spiele_history
     )
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_path = os.path.join(OUTPUT_DIR, "index.html")
