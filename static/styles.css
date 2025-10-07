@@ -35,6 +35,41 @@ body {
   opacity: 0.9;
 }
 
+/* === Tabs Navigation === */
+.tabs-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 0 1rem;
+}
+
+.tab-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.tab-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.tab-button.active {
+  background: white;
+  color: #1e3c72;
+  border-color: white;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 /* === Main Content === */
 .site-main {
   flex: 1;
@@ -52,6 +87,15 @@ section {
   margin-bottom: 2rem;
   box-shadow: 0 8px 16px rgba(0,0,0,0.1);
   animation: fadeIn 0.5s ease-in;
+}
+
+/* === Tab Panels === */
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
 }
 
 @keyframes fadeIn {
@@ -167,6 +211,16 @@ table th:nth-child(5) {
   
   .site-header p {
     font-size: 0.85rem;
+  }
+  
+  .tabs-nav {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .tab-button {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.9rem;
   }
   
   section {
