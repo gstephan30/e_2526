@@ -1,4 +1,5 @@
 import os
+import shutil
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
@@ -11,6 +12,7 @@ DATA_CSV = os.path.join(DATA_DIR, "results.csv")  # Passe an, falls dein CSV and
 TEMPLATE_DIR = "templates"
 TEMPLATE_INDEX = "index.html"
 OUTPUT_DIR = "docs"
+STATIC_DIR = "static"
 
 # === Laden der Datendatei ===
 def load_data():
@@ -142,6 +144,14 @@ def build_site():
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"Erstellt {output_path}")
+    
+    # Kopiere static-Dateien nach docs/static
+    output_static = os.path.join(OUTPUT_DIR, "static")
+    if os.path.exists(STATIC_DIR):
+        if os.path.exists(output_static):
+            shutil.rmtree(output_static)
+        shutil.copytree(STATIC_DIR, output_static)
+        print(f"Kopiert {STATIC_DIR} → {output_static}")
 
 if __name__ == "__main__":
     build_site()
