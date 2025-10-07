@@ -531,4 +531,34 @@ table th:nth-child(6) {
     font-size: 0.85rem;
     padding: 0.75rem 1rem;
   }
+  
+  /* Improve match label display on mobile */
+  .match-label {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    text-align: center;
+  }
+  
+  .match-label strong {
+    display: block;
+    margin: 0.25rem 0;
+  }
+  
+  .match-probability {
+    padding: 1rem 0.75rem;
+  }
+  
+  .probability-chart h3 {
+    font-size: 1.25rem;
+  }
+  
+  .prob-bar-container {
+    height: 40px;
+  }
+  
+  .prob-legend {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
 }
