@@ -58,24 +58,58 @@
     <table>
       <thead>
         <tr>
+          <th>Datum</th>
           <th>Heim</th>
           <th>Gast</th>
           <th>Heim-Sieg</th>
           <th>Unent.</th>
           <th>Ausw.-Sieg</th>
+          <th>Prognose</th>
         </tr>
       </thead>
       <tbody>
       {% for p in predictions %}
         <tr>
+          <td data-label="Datum">{{ p.formatted_date }}</td>
           <td data-label="Heim">{{ p.heim }}</td>
           <td data-label="Gast">{{ p.auswärts }}</td>
           <td data-label="Heim-Sieg">{{ "%.1f"|format(p.home_win * 100) }} %</td>
           <td data-label="Unent.">{{ "%.1f"|format(p.draw * 100) }} %</td>
           <td data-label="Ausw.-Sieg">{{ "%.1f"|format(p.away_win * 100) }} %</td>
+          <td data-label="Prognose" class="predicted-outcome">{{ p.predicted }}</td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
+    
+    <div class="probability-chart">
+      <h3>📊 Wahrscheinlichkeitsverteilung</h3>
+      {% for p in predictions %}
+        <div class="match-probability">
+          <div class="match-label">
+            <strong>{{ p.heim }}</strong> vs <strong>{{ p.auswärts }}</strong>
+          </div>
+          <div class="prob-bar-container">
+            <div class="prob-bar prob-home" style="width: {{ "%.1f"|format(p.home_win * 100) }}%;" 
+                 title="Heim-Sieg: {{ "%.1f"|format(p.home_win * 100) }}%">
+              {% if p.home_win > 0.15 %}{{ "%.0f"|format(p.home_win * 100) }}%{% endif %}
+            </div>
+            <div class="prob-bar prob-draw" style="width: {{ "%.1f"|format(p.draw * 100) }}%;"
+                 title="Unentschieden: {{ "%.1f"|format(p.draw * 100) }}%">
+              {% if p.draw > 0.15 %}{{ "%.0f"|format(p.draw * 100) }}%{% endif %}
+            </div>
+            <div class="prob-bar prob-away" style="width: {{ "%.1f"|format(p.away_win * 100) }}%;"
+                 title="Ausw.-Sieg: {{ "%.1f"|format(p.away_win * 100) }}%">
+              {% if p.away_win > 0.15 %}{{ "%.0f"|format(p.away_win * 100) }}%{% endif %}
+            </div>
+          </div>
+          <div class="prob-legend">
+            <span class="legend-item"><span class="color-box prob-home"></span> Heim-Sieg</span>
+            <span class="legend-item"><span class="color-box prob-draw"></span> Unentschieden</span>
+            <span class="legend-item"><span class="color-box prob-away"></span> Ausw.-Sieg</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
   </section>
 {% endblock %}

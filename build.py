@@ -136,6 +136,17 @@ def predict_match(res, teams_model, home, away):
                 p_draw += pk
             else:
                 p_away += pk
+    
+    # Normalize probabilities to sum to 1
+    total = p_home + p_draw + p_away
+    if total > 0:
+        p_home /= total
+        p_draw /= total
+        p_away /= total
+    else:
+        # Fallback to equal probabilities
+        p_home = p_draw = p_away = 1/3
+    
     return {"home_win": p_home, "draw": p_draw, "away_win": p_away, "lam_h": lam_h, "lam_a": lam_a}
 
 # === Hauptfunktion, Bau der Seite ===
@@ -145,16 +156,37 @@ def build_site():
     tabelle_list = compute_tabelle(df_played)
     res, teams_model = train_model(df_played)
     df_future = df[df["tore_heim"].isna() & df["heim"].notna() & df["auswärts"].notna()].copy()
+    
+    # Exclude matches with "Nichtantritt" (no-show) comments
+    df_future = df_future[~df_future["kommentar"].str.contains("Nichtantritt", na=False)].copy()
+    
+    # Filter to next Spieltag only
+    if len(df_future) > 0:
+        next_spieltag = df_future["spieltag"].min()
+        df_future = df_future[df_future["spieltag"] == next_spieltag].copy()
+    
     predictions = []
     for _, row in df_future.iterrows():
         p = predict_match(res, teams_model, row["heim"], row["auswärts"])
+        
+        # Determine predicted outcome
+        probs = [p["home_win"], p["draw"], p["away_win"]]
+        outcomes = ["Home Win", "Draw", "Away Win"]
+        predicted_outcome = outcomes[probs.index(max(probs))]
+        
+        # Format date
+        formatted_date = format_date_german(row.get("zeit", "")) if row.get("zeit") else ""
+        
         predictions.append({
             "spielnr": int(row["spielnr"]),
+            "datum": row.get("zeit", ""),
+            "formatted_date": formatted_date,
             "heim": row["heim"],
             "auswärts": row["auswärts"],
             "home_win": p["home_win"],
             "draw": p["draw"],
-            "away_win": p["away_win"]
+            "away_win": p["away_win"],
+            "predicted": predicted_outcome
         })
     spiele_history = df_played.to_dict(orient="records")
     # Format dates for display
