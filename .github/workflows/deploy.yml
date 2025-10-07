@@ -46,7 +46,7 @@ jobs:
       # fetch a particular artifact name. Keep this commented as a fallback.
       # - name: Upload pages artifact (fallback)
       #   uses: actions/upload-artifact@v4
-      #   with:
+      #   with: -
       #     name: github-pages
       #     path: docs
 
