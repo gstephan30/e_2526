@@ -5,6 +5,8 @@ import numpy as np
 import statsmodels.api as sm
 from scipy.stats import poisson
 from jinja2 import Environment, FileSystemLoader
+from datetime import datetime
+import locale
 
 # === Pfade ===
 DATA_DIR = "data"
@@ -14,12 +16,33 @@ TEMPLATE_INDEX = "index.html"
 OUTPUT_DIR = "docs"
 STATIC_DIR = "static"
 
+# === German weekday abbreviations ===
+GERMAN_WEEKDAYS = {
+    0: 'Mo',  # Monday
+    1: 'Di',  # Tuesday
+    2: 'Mi',  # Wednesday
+    3: 'Do',  # Thursday
+    4: 'Fr',  # Friday
+    5: 'Sa',  # Saturday
+    6: 'So'   # Sunday
+}
+
 # === Laden der Datendatei ===
 def load_data():
     df = pd.read_csv(DATA_CSV)
     df["tore_heim"] = pd.to_numeric(df.get("tore_heim"), errors="coerce")
     df["tore_auswärts"] = pd.to_numeric(df.get("tore_auswärts"), errors="coerce")
     return df
+
+# === Format date for display ===
+def format_date_german(zeit_str):
+    """Format date as 'Sa, 20.09.2025' with German weekday abbreviation"""
+    try:
+        dt = datetime.strptime(zeit_str, "%Y-%m-%d %H:%M")
+        weekday = GERMAN_WEEKDAYS[dt.weekday()]
+        return f"{weekday}, {dt.strftime('%d.%m.%Y')}"
+    except:
+        return zeit_str
 
 # === Tabelle erzeugen ===
 def compute_tabelle(df_played):
@@ -131,6 +154,10 @@ def build_site():
             "away_win": p["away_win"]
         })
     spiele_history = df_played.to_dict(orient="records")
+    # Format dates for display
+    for spiel in spiele_history:
+        if 'zeit' in spiel:
+            spiel['formatted_date'] = format_date_german(spiel['zeit'])
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
     template = env.get_template(TEMPLATE_INDEX)
     html = template.render(

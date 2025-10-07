@@ -165,6 +165,19 @@ table th:nth-child(5) {
   text-align: center;
 }
 
+/* === Results Table Specific Styling === */
+.section-ergebnisse table td:nth-child(4),
+.section-ergebnisse table td:nth-child(5),
+.section-ergebnisse table th:nth-child(4),
+.section-ergebnisse table th:nth-child(5) {
+  text-align: center;
+  font-weight: 600;
+}
+
+.section-ergebnisse table td:nth-child(1) {
+  white-space: nowrap;
+}
+
 /* === Results List === */
 .section-ergebnisse ul {
   list-style: none;

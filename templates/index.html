@@ -3,19 +3,28 @@
 {% block content %}
   <section id="ergebnisse" class="section-ergebnisse tab-panel active">
     <h2>📜 Ergebnisse bisheriger Spiele</h2>
-    <ul>
-    {% for s in spiele_history %}
-      <li>
-        <strong>{{ s.zeit }}</strong> — 
-        {{ s.heim }} vs {{ s.auswärts }} 
-        {% if s.tore_heim is not none %}
-          <strong>{{ s.tore_heim|int }}:{{ s.tore_auswärts|int }}</strong>
-        {% else %}
-          <em>(kein Ergebnis)</em>
-        {% endif %}
-      </li>
-    {% endfor %}
-    </ul>
+    <table>
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Heim</th>
+          <th>Gast</th>
+          <th>Tore Heim</th>
+          <th>Tore Gast</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for s in spiele_history %}
+        <tr>
+          <td data-label="Datum">{{ s.formatted_date }}</td>
+          <td data-label="Heim">{{ s.heim }}</td>
+          <td data-label="Gast">{{ s.auswärts }}</td>
+          <td data-label="Tore Heim">{{ s.tore_heim|int }}</td>
+          <td data-label="Tore Gast">{{ s.tore_auswärts|int }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
   </section>
 
   <section id="tabelle" class="section-tabelle tab-panel">
