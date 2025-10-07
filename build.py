@@ -1,131 +1,163 @@
-# build.py
-# Predict match goal differences with a robust statsmodels pipeline
-# - Fits OLS on historical results
-# - Predicts upcoming fixtures
-# - FIX: aligns prediction exog to model.exog_names (handles intercept & dummies)
-
 import os
-import json
-import warnings
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+from scipy.stats import poisson
+from jinja2 import Environment, FileSystemLoader
 
-warnings.filterwarnings("ignore", category=FutureWarning)
+# --- Konfiguration ---
+DATA_DIR = "data"
+SPIELE_CSV = os.path.join(DATA_DIR, "spiele.csv")
+HIST_CSV = os.path.join(DATA_DIR, "results.csv")  # optional, für historische Daten
 
-# ------------ Config -------------
-HIST_PATH = os.getenv("HIST_PATH", "data/results.csv")     # needs columns: heim, auswärts, tore_heim, tore_auswärts, (optional) date
-FIXTURES_PATH = os.getenv("FIXTURES_PATH", "data/fixtures.csv")  # needs columns: heim, auswärts
-OUT_DIR = os.getenv("OUT_DIR", "build")
-PREDICTIONS_CSV = os.path.join(OUT_DIR, "predictions.csv")
-MODEL_META_JSON = os.path.join(OUT_DIR, "model_meta.json")
+TEMPLATE_DIR = "templates"
+OUTPUT_DIR = "docs"
+TEMPLATE_INDEX = "index.html"
 
-os.makedirs(OUT_DIR, exist_ok=True)
+# --- Funktionen ---
 
-# ------------ Helpers -------------
-def _validate_columns(df: pd.DataFrame, required: list, name: str):
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"{name}: missing required columns: {missing}. "
-                         f"Available: {list(df.columns)}")
+def load_spiele():
+    df = pd.read_csv(SPIELE_CSV)
+    # Konvertiere Tore zu numerisch, falls möglich
+    df["tore_heim"] = pd.to_numeric(df.get("tore_heim"), errors="coerce")
+    df["tore_auswärts"] = pd.to_numeric(df.get("tore_auswärts"), errors="coerce")
+    return df
 
-def _make_design_matrix(df: pd.DataFrame, home_col: str, away_col: str,
-                        all_teams: list, drop_first: bool = True) -> pd.DataFrame:
-    """
-    Create a stable design matrix for home/away team fixed effects.
-    Uses a fixed category list to ensure identical dummy columns at train & predict.
-    """
-    # Lock categories so get_dummies yields stable columns
-    home = pd.Categorical(df[home_col], categories=all_teams, ordered=True)
-    away = pd.Categorical(df[away_col], categories=all_teams, ordered=True)
-    H = pd.get_dummies(home, prefix="home", drop_first=drop_first)
-    A = pd.get_dummies(away, prefix="away", drop_first=drop_first)
-    X = pd.concat([H, A], axis=1)
-    # Add constant last; we’ll reorder later against model.exog_names anyway
-    X = sm.add_constant(X, has_constant="add")
-    return X
-
-def _align_to_exog_names(X: pd.DataFrame, exog_names: list) -> pd.DataFrame:
-    # Intercept naming normalization
-    cols = list(X.columns)
-    if "Intercept" in exog_names and "const" in cols:
-        X = X.rename(columns={"const": "Intercept"})
-    if "const" in exog_names and "Intercept" in cols:
-        X = X.rename(columns={"Intercept": "const"})
-    # Reindex to training columns; fill missing with 0 (unseen categories)
-    X = X.reindex(columns=exog_names, fill_value=0)
-    return X
-
-# ------------ Load data -------------
-hist = pd.read_csv(HIST_PATH)
-_validate_columns(hist, ["heim", "auswärts", "tore_heim", "tore_auswärts"], "results")
-
-fixtures = pd.read_csv(FIXTURES_PATH)
-_validate_columns(fixtures, ["heim", "auswärts"], "fixtures")
-
-# ------------ Train -------------
-hist = hist.copy()
-hist["goal_diff"] = hist["tore_heim"] - hist["tore_auswärts"]
-
-# Known teams universe (stable order)
-teams = sorted(pd.unique(pd.concat([hist["heim"], hist["auswärts"]], axis=0)))
-
-# Design matrix for training
-X_train = _make_design_matrix(hist, "heim", "auswärts", all_teams=teams, drop_first=True)
-y_train = hist["goal_diff"].astype(float)
-
-# Fit OLS
-res = sm.OLS(y_train, X_train).fit()
-
-# Persist minimal model meta for debugging / reuse
-model_meta = {
-    "exog_names": res.model.exog_names,
-    "teams": teams,
-    "drop_first": True,
-    "n_params": int(len(res.params)),
-}
-with open(MODEL_META_JSON, "w", encoding="utf-8") as f:
-    json.dump(model_meta, f, ensure_ascii=False, indent=2)
-
-# ------------ Predict -------------
-def predict_match(heim: str, auswaerts: str) -> float:
-    row = pd.DataFrame([{"heim": heim, "auswärts": auswaerts}])
-    X = _make_design_matrix(row, "heim", "auswärts", all_teams=teams, drop_first=True)
-    X = _align_to_exog_names(X, res.model.exog_names)
-    # Safety check (prevents shape mismatch crash)
-    if X.shape[1] != len(res.params):
-        raise RuntimeError(f"Design matrix mismatch at predict: X has {X.shape[1]} cols, "
-                           f"model expects {len(res.params)}")
-    pred = res.predict(X)[0]
-    return float(pred)
-
-pred_rows = []
-for idx, row in fixtures.iterrows():
-    h = row["heim"]
-    a = row["auswärts"]
-    try:
-        gd = predict_match(h, a)
-        # Optional: convert goal diff to simple win/draw/loss probabilities (logit-ish heuristic)
-        # Here we just keep the raw expected difference; you can map to probabilities externally.
-        pred_rows.append({
-            "heim": h,
-            "auswärts": a,
-            "exp_goal_diff": round(gd, 3),
+def compute_tabelle(df_played):
+    # teams sammeln
+    teams = sorted(set(df_played["heim"].dropna().tolist() + df_played["auswärts"].dropna().tolist()))
+    tbl = pd.DataFrame(0, index=teams, columns=["spiele","siege","unentschieden","niederlagen","tore","geg"])
+    for _, row in df_played.iterrows():
+        hm = row["heim"]
+        aw = row["auswärts"]
+        th = int(row["tore_heim"])
+        ta = int(row["tore_auswärts"])
+        tbl.at[hm, "spiele"] += 1
+        tbl.at[aw, "spiele"] += 1
+        tbl.at[hm, "tore"] += th
+        tbl.at[hm, "geg"] += ta
+        tbl.at[aw, "tore"] += ta
+        tbl.at[aw, "geg"] += th
+        if th > ta:
+            tbl.at[hm, "siege"] += 1
+            tbl.at[aw, "niederlagen"] += 1
+        elif th == ta:
+            tbl.at[hm, "unentschieden"] += 1
+            tbl.at[aw, "unentschieden"] += 1
+        else:
+            tbl.at[aw, "siege"] += 1
+            tbl.at[hm, "niederlagen"] += 1
+    tbl["punkte"] = 3 * tbl["siege"] + 1 * tbl["unentschieden"]
+    # Umwandlung in Liste von Dicts für Template
+    tabelle_list = []
+    for team in tbl.index:
+        tabelle_list.append({
+            "team": team,
+            "spiele": int(tbl.at[team, "spiele"]),
+            "punkte": int(tbl.at[team, "punkte"]),
+            "tore": int(tbl.at[team, "tore"]),
+            "geg": int(tbl.at[team, "geg"]),
         })
-    except Exception as e:
-        pred_rows.append({
-            "heim": h,
-            "auswärts": a,
-            "exp_goal_diff": np.nan,
-            "error": str(e),
+    # sortieren: Punkte absteigend, bei Gleichstand Tordifferenz
+    tabelle_list.sort(key=lambda x: (x["punkte"], x["tore"] - x["geg"]), reverse=True)
+    return tabelle_list
+
+def train_model(df_played):
+    # Modell auf Tordifferenz (Heim minus Auswärts) schätzen
+    # Designmatrix: Dummy für Heim vs Auswärts
+    teams = sorted(set(df_played["heim"].dropna().tolist() + df_played["auswärts"].dropna().tolist()))
+    idx = {team: i for i, team in enumerate(teams)}
+    n = df_played.shape[0]
+    Xh = np.zeros((n, len(teams)))
+    Xa = np.zeros((n, len(teams)))
+    for i, row in enumerate(df_played.itertuples()):
+        Xh[i, idx[row.heim]] = 1
+        Xa[i, idx[row.auswärts]] = 1
+    y_diff = (df_played["tore_heim"] - df_played["tore_auswärts"]).values
+    Xdiff = Xh - Xa
+    model = sm.OLS(y_diff, sm.add_constant(Xdiff))
+    res = model.fit()
+    return res, teams
+
+def predict_match(res, teams_model, home, away):
+    # Prognose der Wahrscheinlichkeiten für ein Match
+    if home not in teams_model or away not in teams_model:
+        # Fallback, wenn unbekannte Mannschaft
+        return {"home_win": 1/3, "draw": 1/3, "away_win": 1/3, "lam_h": None, "lam_a": None}
+    # Baue Dummy-Vektor
+    vec = np.zeros(len(teams_model))
+    vec[teams_model.index(home)] = 1
+    vec[teams_model.index(away)] = -1
+    Xrow = sm.add_constant(pd.DataFrame([vec])).values
+    est_diff = res.predict(Xrow)[0]
+    total_lambda = 5.0
+    lam_h = max(0.1, (total_lambda + est_diff) / 2)
+    lam_a = max(0.1, total_lambda - lam_h)
+    # Berechne P mit Poisson-Ansatz
+    max_goals = 8
+    p_home = p_draw = p_away = 0.0
+    for k in range(max_goals + 1):
+        for m in range(max_goals + 1):
+            pk = poisson.pmf(k, lam_h) * poisson.pmf(m, lam_a)
+            if k > m:
+                p_home += pk
+            elif k == m:
+                p_draw += pk
+            else:
+                p_away += pk
+    return {
+        "home_win": p_home,
+        "draw": p_draw,
+        "away_win": p_away,
+        "lam_h": lam_h,
+        "lam_a": lam_a
+    }
+
+def build_site():
+    # Lade alle Spiele
+    df = load_spiele()
+    # Spiele mit Ergebnis
+    df_played = df.dropna(subset=["tore_heim", "tore_auswärts"]).copy()
+
+    # Tabelle berechnen
+    tabelle_list = compute_tabelle(df_played)
+
+    # Modell trainieren
+    res, teams_model = train_model(df_played)
+
+    # Prognosen für kommende Spiele
+    df_future = df[df["tore_heim"].isna() & df["heim"].notna() & df["auswärts"].notna()].copy()
+    predictions = []
+    for _, row in df_future.iterrows():
+        p = predict_match(res, teams_model, row["heim"], row["auswärts"])
+        predictions.append({
+            "spielnr": int(row["spielnr"]),
+            "heim": row["heim"],
+            "auswärts": row["auswärts"],
+            "home_win": p["home_win"],
+            "draw": p["draw"],
+            "away_win": p["away_win"]
         })
 
-pred_df = pd.DataFrame(pred_rows)
-pred_df.to_csv(PREDICTIONS_CSV, index=False)
+    # Historical Spiele zur Anzeige
+    spiele_history = df_played.to_dict(orient="records")
 
-# ------------ Minimal console output -------------
-print(f"Trained OLS with {len(res.params)} params on {len(hist)} matches.")
-print(f"Saved predictions to {PREDICTIONS_CSV}")
-if pred_df.get("error", pd.Series()).notna().any():
-    n_err = pred_df["error"].notna().sum()
-    print(f"NOTE: {n_err} prediction rows had alignment issues (see CSV 'error' column).")
+    # Template rendern
+    env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+    template = env.get_template(TEMPLATE_INDEX)
+    html = template.render(
+        title = "Prognose & Spielplan",
+        predictions = predictions,
+        tabelle = tabelle_list,
+        spiele_history = spiele_history
+    )
+
+    # Output schreiben
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    output_path = os.path.join(OUTPUT_DIR, "index.html")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"Erstellt {output_path}")
+
+if __name__ == "__main__":
+    build_site()
