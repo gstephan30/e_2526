@@ -299,6 +299,20 @@ table th:nth-child(6) {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
+/* === Impressum === */
+.section-impressum {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.section-impressum p {
+  font-size: 1.1rem;
+  color: #555;
+  margin-top: 1rem;
+}
+
 /* === Footer === */
 .site-footer {
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);

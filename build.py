@@ -207,6 +207,7 @@ def build_site():
         f.write(html)
     print(f"Erstellt {output_path}")
     
+
     # Generate Impressum page
     impressum_template = env.get_template("impressum.html")
     impressum_html = impressum_template.render(title="Impressum")
@@ -215,6 +216,7 @@ def build_site():
         f.write(impressum_html)
     print(f"Erstellt {impressum_path}")
     
+
     # Generate Dokumentation page
     doku_template = env.get_template("dokumentation.html")
     doku_html = doku_template.render(title="Modell-Dokumentation")
@@ -223,6 +225,7 @@ def build_site():
         f.write(doku_html)
     print(f"Erstellt {doku_path}")
     
+
     # Kopiere static-Dateien nach docs/static
     output_static = os.path.join(OUTPUT_DIR, "static")
     if os.path.exists(STATIC_DIR):
