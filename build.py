@@ -5,26 +5,23 @@ import statsmodels.api as sm
 from scipy.stats import poisson
 from jinja2 import Environment, FileSystemLoader
 
-# --- Konfiguration ---
+# --- Konfiguration / Pfade ---
 DATA_DIR = "data"
-SPIELE_CSV = os.path.join(DATA_DIR, "spiele.csv")
-HIST_CSV = os.path.join(DATA_DIR, "results.csv")  # optional, für historische Daten
-
+DATA_CSV = os.path.join(DATA_DIR, "results.csv")  # oder wie auch immer deine Datei heißt
 TEMPLATE_DIR = "templates"
-OUTPUT_DIR = "docs"
 TEMPLATE_INDEX = "index.html"
+OUTPUT_DIR = "docs"
 
-# --- Funktionen ---
-
-def load_spiele():
-    df = pd.read_csv(SPIELE_CSV)
-    # Konvertiere Tore zu numerisch, falls möglich
+# --- Laden der Daten ---
+def load_data():
+    df = pd.read_csv(DATA_CSV)
+    # Konvertiere Tore zu numerisch (falls leer oder fehlerhaft → NaN)
     df["tore_heim"] = pd.to_numeric(df.get("tore_heim"), errors="coerce")
     df["tore_auswärts"] = pd.to_numeric(df.get("tore_auswärts"), errors="coerce")
     return df
 
+# --- Tabelle berechnen ---
 def compute_tabelle(df_played):
-    # teams sammeln
     teams = sorted(set(df_played["heim"].dropna().tolist() + df_played["auswärts"].dropna().tolist()))
     tbl = pd.DataFrame(0, index=teams, columns=["spiele","siege","unentschieden","niederlagen","tore","geg"])
     for _, row in df_played.iterrows():
@@ -48,7 +45,6 @@ def compute_tabelle(df_played):
             tbl.at[aw, "siege"] += 1
             tbl.at[hm, "niederlagen"] += 1
     tbl["punkte"] = 3 * tbl["siege"] + 1 * tbl["unentschieden"]
-    # Umwandlung in Liste von Dicts für Template
     tabelle_list = []
     for team in tbl.index:
         tabelle_list.append({
@@ -56,18 +52,16 @@ def compute_tabelle(df_played):
             "spiele": int(tbl.at[team, "spiele"]),
             "punkte": int(tbl.at[team, "punkte"]),
             "tore": int(tbl.at[team, "tore"]),
-            "geg": int(tbl.at[team, "geg"]),
+            "geg": int(tbl.at[team, "geg"])
         })
-    # sortieren: Punkte absteigend, bei Gleichstand Tordifferenz
     tabelle_list.sort(key=lambda x: (x["punkte"], x["tore"] - x["geg"]), reverse=True)
     return tabelle_list
 
+# --- Modelltraining ---
 def train_model(df_played):
-    # Modell auf Tordifferenz (Heim minus Auswärts) schätzen
-    # Designmatrix: Dummy für Heim vs Auswärts
     teams = sorted(set(df_played["heim"].dropna().tolist() + df_played["auswärts"].dropna().tolist()))
     idx = {team: i for i, team in enumerate(teams)}
-    n = df_played.shape[0]
+    n = len(df_played)
     Xh = np.zeros((n, len(teams)))
     Xa = np.zeros((n, len(teams)))
     for i, row in enumerate(df_played.itertuples()):
@@ -79,12 +73,11 @@ def train_model(df_played):
     res = model.fit()
     return res, teams
 
+# --- Prognosefunktion für ein Match ---
 def predict_match(res, teams_model, home, away):
-    # Prognose der Wahrscheinlichkeiten für ein Match
     if home not in teams_model or away not in teams_model:
-        # Fallback, wenn unbekannte Mannschaft
         return {"home_win": 1/3, "draw": 1/3, "away_win": 1/3, "lam_h": None, "lam_a": None}
-    # Baue Dummy-Vektor
+    # Dummy-Vektor
     vec = np.zeros(len(teams_model))
     vec[teams_model.index(home)] = 1
     vec[teams_model.index(away)] = -1
@@ -93,7 +86,7 @@ def predict_match(res, teams_model, home, away):
     total_lambda = 5.0
     lam_h = max(0.1, (total_lambda + est_diff) / 2)
     lam_a = max(0.1, total_lambda - lam_h)
-    # Berechne P mit Poisson-Ansatz
+    # Wahrscheinlichkeiten via Poisson
     max_goals = 8
     p_home = p_draw = p_away = 0.0
     for k in range(max_goals + 1):
@@ -113,19 +106,14 @@ def predict_match(res, teams_model, home, away):
         "lam_a": lam_a
     }
 
+# --- Hauptfunktion, die Seite baut ---
 def build_site():
-    # Lade alle Spiele
-    df = load_spiele()
-    # Spiele mit Ergebnis
+    df = load_data()
     df_played = df.dropna(subset=["tore_heim", "tore_auswärts"]).copy()
 
-    # Tabelle berechnen
     tabelle_list = compute_tabelle(df_played)
-
-    # Modell trainieren
     res, teams_model = train_model(df_played)
 
-    # Prognosen für kommende Spiele
     df_future = df[df["tore_heim"].isna() & df["heim"].notna() & df["auswärts"].notna()].copy()
     predictions = []
     for _, row in df_future.iterrows():
@@ -139,10 +127,8 @@ def build_site():
             "away_win": p["away_win"]
         })
 
-    # Historical Spiele zur Anzeige
     spiele_history = df_played.to_dict(orient="records")
 
-    # Template rendern
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
     template = env.get_template(TEMPLATE_INDEX)
     html = template.render(
@@ -152,7 +138,6 @@ def build_site():
         spiele_history = spiele_history
     )
 
-    # Output schreiben
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_path = os.path.join(OUTPUT_DIR, "index.html")
     with open(output_path, "w", encoding="utf-8") as f:
