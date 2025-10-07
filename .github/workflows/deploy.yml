@@ -33,22 +33,14 @@ jobs:
           echo "Listing docs directory for debugging"
           ls -la docs || echo "docs directory missing"
 
-      - name: Upload pages artifact
-        # Upload as a named artifact using the current upload-artifact action (v4)
-        # so the deploy action can fetch it. This avoids the deprecated v3
-        # dependency that caused the runner error.
-        uses: actions/upload-artifact@v4
-        with:
-          name: github-pages
-          path: docs
+      - name: Fix permissions
+        run: |
+          chmod -R +rX docs/
 
-      # Alternative: upload as a named artifact if you prefer the deploy step to
-      # fetch a particular artifact name. Keep this commented as a fallback.
-      # - name: Upload pages artifact (fallback)
-      #   uses: actions/upload-artifact@v4
-      #   with: -
-      #     name: github-pages
-      #     path: docs
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
 
   deploy:
     needs: build
