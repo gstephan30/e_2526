@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="section-prognose">
+    <h2>Prognose nächster Spieltag</h2>
+    <table>
+      <thead>
+        <tr><th>Heim</th><th>Gast</th><th>Heim-W</th><th>Unentschieden</th><th>Auswärts-W</th></tr>
+      </thead>
+      <tbody>
+      {% for p in predictions %}
+        <tr>
+          <td>{{ p.heim }}</td>
+          <td>{{ p.auswärts }}</td>
+          <td>{{ "%.1f"|format(p.home_win * 100) }} %</td>
+          <td>{{ "%.1f"|format(p.draw * 100) }} %</td>
+          <td>{{ "%.1f"|format(p.away_win * 100) }} %</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section-tabelle">
+    <h2>Aktuelle Tabelle</h2>
+    <table>
+      <thead>
+        <tr><th>Mannschaft</th><th>Spiele</th><th>Punkte</th><th>Tore : Gegentore</th></tr>
+      </thead>
+      <tbody>
+      {% for row in tabelle %}
+        <tr>
+          <td>{{ row.team }}</td>
+          <td>{{ row.spiele }}</td>
+          <td>{{ row.punkte }}</td>
+          <td>{{ row.tore }} : {{ row.geg }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section-ergebnisse">
+    <h2>Ergebnisse bisheriger Spiele</h2>
+    <ul>
+    {% for s in spiele_history %}
+      <li>{{ s.zeit }} — {{ s.heim }} vs {{ s.auswärts }} {% if s.tore_heim is not none %} : {{ s.tore_heim }}-{{ s.tore_auswärts }}{% else %}(kein Ergebnis){% endif %}</li>
+    {% endfor %}
+    </ul>
+  </section>
+{% endblock %}

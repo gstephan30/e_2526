@@ -1,0 +1,5 @@
+pandas
+numpy
+jinja2
+statsmodels
+scipy
