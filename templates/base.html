@@ -41,6 +41,13 @@
       tabButtons.forEach(button => {
         button.addEventListener('click', function() {
           const targetTab = this.getAttribute('data-tab');
+          const targetPanel = document.getElementById(targetTab);
+          
+          // If target panel doesn't exist, navigate to index.html with hash
+          if (!targetPanel) {
+            window.location.href = 'index.html#' + targetTab;
+            return;
+          }
           
           // Remove active class from all buttons and panels
           tabButtons.forEach(btn => btn.classList.remove('active'));
@@ -48,12 +55,26 @@
           
           // Add active class to clicked button and corresponding panel
           this.classList.add('active');
-          const targetPanel = document.getElementById(targetTab);
-          if (targetPanel) {
-            targetPanel.classList.add('active');
-          }
+          targetPanel.classList.add('active');
         });
       });
+      
+      // Handle hash-based navigation on page load
+      if (window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        const targetPanel = document.getElementById(hash);
+        const targetButton = document.querySelector('[data-tab="' + hash + '"]');
+        
+        if (targetPanel && targetButton) {
+          // Remove active class from all
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabPanels.forEach(panel => panel.classList.remove('active'));
+          
+          // Activate the target
+          targetButton.classList.add('active');
+          targetPanel.classList.add('active');
+        }
+      }
     });
   </script>
 </body>
