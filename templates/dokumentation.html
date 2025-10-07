@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-section active">
+    <h2>📊 Modell-Dokumentation</h2>
+    
+    <div class="content-box">
+      <h3>Mathematisches Prognosemodell für Fußballergebnisse</h3>
+      
+      <p>
+        Unser hochentwickeltes statistisches Modell basiert auf der Poisson-Verteilung und multivariater Regressionsanalyse zur Vorhersage von Spielausgängen in der U11 E-Junioren Staffel.
+      </p>
+
+      <h4>1. Grundlagen der Poisson-Verteilung</h4>
+      <p>
+        Die Wahrscheinlichkeit für genau <em>k</em> Tore folgt der Poisson-Verteilung:
+      </p>
+      <div class="equation">
+        <em>P</em>(<em>X</em> = <em>k</em>) = (<em>λ<sup>k</sup></em> · <em>e</em><sup>-<em>λ</em></sup>) / <em>k</em>!
+      </div>
+      <p>
+        wobei <em>λ</em> die erwartete Anzahl der Tore (Erwartungswert) darstellt und <em>e</em> ≈ 2.71828 die Eulersche Zahl ist.
+      </p>
+
+      <h4>2. Regressionsmodell für Tordifferenzen</h4>
+      <p>
+        Zur Schätzung der Mannschaftsstärken verwenden wir ein lineares Regressionsmodell:
+      </p>
+      <div class="equation">
+        <em>y<sub>i</sub></em> = <em>β</em><sub>0</sub> + Σ<sub><em>j</em>=1</sub><sup><em>n</em></sup> <em>β<sub>j</sub></em> · (<em>X<sub>heim,j</sub></em> - <em>X<sub>ausw,j</sub></em>) + <em>ε<sub>i</sub></em>
+      </div>
+      <p>
+        Hierbei ist:
+      </p>
+      <ul>
+        <li><em>y<sub>i</sub></em> = Tordifferenz des Spiels <em>i</em> (Tore<sub>heim</sub> - Tore<sub>ausw</sub>)</li>
+        <li><em>β</em><sub>0</sub> = Konstante (Heimvorteil)</li>
+        <li><em>β<sub>j</sub></em> = Stärkeparameter der Mannschaft <em>j</em></li>
+        <li><em>X<sub>heim,j</sub></em>, <em>X<sub>ausw,j</sub></em> = Dummy-Variablen (1 wenn Mannschaft <em>j</em> spielt, sonst 0)</li>
+        <li><em>ε<sub>i</sub></em> = Fehlerterm mit <em>ε<sub>i</sub></em> ~ <em>N</em>(0, <em>σ</em>²)</li>
+      </ul>
+
+      <h4>3. Schätzung der erwarteten Tore</h4>
+      <p>
+        Aus der geschätzten Tordifferenz <em>Δ̂</em> berechnen wir die erwarteten Tore:
+      </p>
+      <div class="equation">
+        <em>λ<sub>heim</sub></em> = max(0.1, (<em>Λ</em> + <em>Δ̂</em>) / 2)
+      </div>
+      <div class="equation">
+        <em>λ<sub>ausw</sub></em> = max(0.1, <em>Λ</em> - <em>λ<sub>heim</sub></em>)
+      </div>
+      <p>
+        wobei <em>Λ</em> = 5.0 die durchschnittliche Gesamttoranzahl pro Spiel darstellt.
+      </p>
+
+      <h4>4. Berechnung der Ergebniswahrscheinlichkeiten</h4>
+      <p>
+        Die Wahrscheinlichkeit für ein bestimmtes Ergebnis (<em>k</em>, <em>m</em>) ist das Produkt der einzelnen Poisson-Wahrscheinlichkeiten:
+      </p>
+      <div class="equation">
+        <em>P</em>(<em>k</em>, <em>m</em>) = <em>P</em>(<em>X<sub>heim</sub></em> = <em>k</em>) · <em>P</em>(<em>X<sub>ausw</sub></em> = <em>m</em>)
+      </div>
+
+      <h4>5. Aggregierte Spielausgänge</h4>
+      <p>
+        Durch Summation über alle möglichen Ergebnisse bis zu einem Maximum von 8 Toren erhalten wir:
+      </p>
+      <div class="equation">
+        <em>P</em>(Heimsieg) = Σ<sub><em>k</em>=0</sub><sup>8</sup> Σ<sub><em>m</em>=0</sub><sup><em>k</em>-1</sup> <em>P</em>(<em>k</em>, <em>m</em>)
+      </div>
+      <div class="equation">
+        <em>P</em>(Unentschieden) = Σ<sub><em>k</em>=0</sub><sup>8</sup> <em>P</em>(<em>k</em>, <em>k</em>)
+      </div>
+      <div class="equation">
+        <em>P</em>(Auswärtssieg) = Σ<sub><em>m</em>=0</sub><sup>8</sup> Σ<sub><em>k</em>=0</sub><sup><em>m</em>-1</sup> <em>P</em>(<em>k</em>, <em>m</em>)
+      </div>
+
+      <h4>6. Normalisierung</h4>
+      <p>
+        Zur Sicherstellung der Wahrscheinlichkeitsaxiome normalisieren wir:
+      </p>
+      <div class="equation">
+        <em>P<sub>norm</sub></em>(<em>Ereignis</em>) = <em>P</em>(<em>Ereignis</em>) / (<em>P</em>(Heimsieg) + <em>P</em>(Unentschieden) + <em>P</em>(Auswärtssieg))
+      </div>
+      <p>
+        sodass Σ <em>P<sub>norm</sub></em> = 1
+      </p>
+
+      <h4>7. Modellannahmen und Limitationen</h4>
+      <ul>
+        <li><strong>Unabhängigkeit:</strong> Tore werden als unabhängige Ereignisse betrachtet</li>
+        <li><strong>Stationarität:</strong> Mannschaftsstärken bleiben über die Saison konstant</li>
+        <li><strong>Homoskedastizität:</strong> Konstante Fehlervarianz <em>σ</em>² für alle Beobachtungen</li>
+        <li><strong>Normalverteilung:</strong> Residuen <em>ε<sub>i</sub></em> sind normalverteilt</li>
+        <li><strong>Linearität:</strong> Linearer Zusammenhang zwischen Tordifferenz und Mannschaftsstärken</li>
+      </ul>
+
+      <h4>8. Statistische Gütekriterien</h4>
+      <p>
+        Das Modell wird mittels der Methode der kleinsten Quadrate geschätzt:
+      </p>
+      <div class="equation">
+        min<sub><em>β</em></sub> Σ<sub><em>i</em>=1</sub><sup><em>n</em></sup> (<em>y<sub>i</sub></em> - <em>ŷ<sub>i</sub></em>)²
+      </div>
+      <p>
+        wobei <em>ŷ<sub>i</sub></em> = <em>β̂</em><sub>0</sub> + Σ<sub><em>j</em></sub> <em>β̂<sub>j</sub></em> · (<em>X<sub>heim,j</sub></em> - <em>X<sub>ausw,j</sub></em>) die geschätzte Tordifferenz ist.
+      </p>
+
+      <h4>9. Erweiterte Formulierung</h4>
+      <p>
+        In Matrix-Notation lässt sich das Modell elegant darstellen als:
+      </p>
+      <div class="equation">
+        <strong><em>y</em></strong> = <strong><em>X</em></strong><strong><em>β</em></strong> + <strong><em>ε</em></strong>
+      </div>
+      <p>
+        mit der Lösung des Normalgleichungssystems:
+      </p>
+      <div class="equation">
+        <strong><em>β̂</em></strong> = (<strong><em>X</em></strong><sup>T</sup><strong><em>X</em></strong>)<sup>-1</sup> <strong><em>X</em></strong><sup>T</sup> <strong><em>y</em></strong>
+      </div>
+
+      <h4>10. Konfidenzbereiche</h4>
+      <p>
+        Die Standardfehler der Parameterschätzer berechnen sich aus:
+      </p>
+      <div class="equation">
+        <em>SE</em>(<em>β̂<sub>j</sub></em>) = <em>σ̂</em> · √[(<strong><em>X</em></strong><sup>T</sup><strong><em>X</em></strong>)<sup>-1</sup>]<sub><em>jj</em></sub>
+      </div>
+      <p>
+        mit <em>σ̂</em>² = Σ(<em>y<sub>i</sub></em> - <em>ŷ<sub>i</sub></em>)² / (<em>n</em> - <em>p</em>), wobei <em>p</em> die Anzahl der Parameter darstellt.
+      </p>
+
+      <h3>Implementierung</h3>
+      <p>
+        Das Modell wurde in Python unter Verwendung der Bibliotheken <code>statsmodels</code> (für die OLS-Regression) und <code>scipy.stats</code> (für die Poisson-Verteilung) implementiert. Die Berechnung erfolgt automatisch bei jedem Build-Prozess auf Basis der aktuellen Spieldaten.
+      </p>
+
+      <h3>Validierung</h3>
+      <p>
+        Die Prognosegüte wird kontinuierlich durch Vergleich der vorhergesagten mit den tatsächlich eingetretenen Ergebnissen überprüft. Bei signifikanten Abweichungen erfolgt eine Rekalibrierung der Modellparameter.
+      </p>
+
+      <p class="footer-note">
+        <em>Entwickelt für die Saison 25/26 | Mathematisch-statistische Grundlage basierend auf etablierten Methoden der Sportwissenschaft</em>
+      </p>
+    </div>
+  </section>
+{% endblock %}
