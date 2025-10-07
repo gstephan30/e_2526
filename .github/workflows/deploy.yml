@@ -28,13 +28,26 @@ jobs:
       - name: Build site
         run: python build.py
 
-      - name: Upload pages artifact
-        # Use upload-artifact to create an artifact named 'github-pages'
-        # so that actions/deploy-pages@v4 can find it.
-        uses: actions/upload-artifact@v4
+      - name: Show generated docs
+        run: |
+          echo "Listing docs directory for debugging"
+          ls -la docs || echo "docs directory missing"
+
+      - name: Upload pages artifact (recommended)
+        # Use actions/upload-pages-artifact so that actions/deploy-pages can consume
+        # the Pages artifact directly. This is the recommended pattern from the
+        # actions/deploy-pages README.
+        uses: actions/upload-pages-artifact@v1
         with:
-          name: github-pages
-          path: docs   # Pfad zu deinem generierten HTML / statischen Dateien
+          path: docs
+
+      # Alternative: upload as a named artifact if you prefer the deploy step to
+      # fetch a particular artifact name. Keep this commented as a fallback.
+      # - name: Upload pages artifact (fallback)
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: github-pages
+      #     path: docs
 
   deploy:
     needs: build
