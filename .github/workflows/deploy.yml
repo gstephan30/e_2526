@@ -29,8 +29,11 @@ jobs:
         run: python build.py
 
       - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v4
+        # Use upload-artifact to create an artifact named 'github-pages'
+        # so that actions/deploy-pages@v4 can find it.
+        uses: actions/upload-artifact@v4
         with:
+          name: github-pages
           path: docs   # Pfad zu deinem generierten HTML / statischen Dateien
 
   deploy:
