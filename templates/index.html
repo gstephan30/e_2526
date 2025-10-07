@@ -1,33 +1,24 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="section-prognose">
-    <h2>⚽ Prognose nächster Spieltag</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Heim</th>
-          <th>Gast</th>
-          <th>Heim-Sieg</th>
-          <th>Unent.</th>
-          <th>Ausw.-Sieg</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for p in predictions %}
-        <tr>
-          <td data-label="Heim">{{ p.heim }}</td>
-          <td data-label="Gast">{{ p.auswärts }}</td>
-          <td data-label="Heim-Sieg">{{ "%.1f"|format(p.home_win * 100) }} %</td>
-          <td data-label="Unent.">{{ "%.1f"|format(p.draw * 100) }} %</td>
-          <td data-label="Ausw.-Sieg">{{ "%.1f"|format(p.away_win * 100) }} %</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <section id="ergebnisse" class="section-ergebnisse tab-panel active">
+    <h2>📜 Ergebnisse bisheriger Spiele</h2>
+    <ul>
+    {% for s in spiele_history %}
+      <li>
+        <strong>{{ s.zeit }}</strong> — 
+        {{ s.heim }} vs {{ s.auswärts }} 
+        {% if s.tore_heim is not none %}
+          <strong>{{ s.tore_heim|int }}:{{ s.tore_auswärts|int }}</strong>
+        {% else %}
+          <em>(kein Ergebnis)</em>
+        {% endif %}
+      </li>
+    {% endfor %}
+    </ul>
   </section>
 
-  <section class="section-tabelle">
+  <section id="tabelle" class="section-tabelle tab-panel">
     <h2>📊 Aktuelle Tabelle</h2>
     <table>
       <thead>
@@ -51,20 +42,29 @@
     </table>
   </section>
 
-  <section class="section-ergebnisse">
-    <h2>📜 Ergebnisse bisheriger Spiele</h2>
-    <ul>
-    {% for s in spiele_history %}
-      <li>
-        <strong>{{ s.zeit }}</strong> — 
-        {{ s.heim }} vs {{ s.auswärts }} 
-        {% if s.tore_heim is not none %}
-          <strong>{{ s.tore_heim|int }}:{{ s.tore_auswärts|int }}</strong>
-        {% else %}
-          <em>(kein Ergebnis)</em>
-        {% endif %}
-      </li>
-    {% endfor %}
-    </ul>
+  <section id="prognose" class="section-prognose tab-panel">
+    <h2>⚽ Prognose nächster Spieltag</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Heim</th>
+          <th>Gast</th>
+          <th>Heim-Sieg</th>
+          <th>Unent.</th>
+          <th>Ausw.-Sieg</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in predictions %}
+        <tr>
+          <td data-label="Heim">{{ p.heim }}</td>
+          <td data-label="Gast">{{ p.auswärts }}</td>
+          <td data-label="Heim-Sieg">{{ "%.1f"|format(p.home_win * 100) }} %</td>
+          <td data-label="Unent.">{{ "%.1f"|format(p.draw * 100) }} %</td>
+          <td data-label="Ausw.-Sieg">{{ "%.1f"|format(p.away_win * 100) }} %</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
   </section>
 {% endblock %}
