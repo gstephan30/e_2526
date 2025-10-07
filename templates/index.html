@@ -2,19 +2,25 @@
 
 {% block content %}
   <section class="section-prognose">
-    <h2>Prognose nächster Spieltag</h2>
+    <h2>⚽ Prognose nächster Spieltag</h2>
     <table>
       <thead>
-        <tr><th>Heim</th><th>Gast</th><th>Heim-W</th><th>Unentschieden</th><th>Auswärts-W</th></tr>
+        <tr>
+          <th>Heim</th>
+          <th>Gast</th>
+          <th>Heim-Sieg</th>
+          <th>Unent.</th>
+          <th>Ausw.-Sieg</th>
+        </tr>
       </thead>
       <tbody>
       {% for p in predictions %}
         <tr>
-          <td>{{ p.heim }}</td>
-          <td>{{ p.auswärts }}</td>
-          <td>{{ "%.1f"|format(p.home_win * 100) }} %</td>
-          <td>{{ "%.1f"|format(p.draw * 100) }} %</td>
-          <td>{{ "%.1f"|format(p.away_win * 100) }} %</td>
+          <td data-label="Heim">{{ p.heim }}</td>
+          <td data-label="Gast">{{ p.auswärts }}</td>
+          <td data-label="Heim-Sieg">{{ "%.1f"|format(p.home_win * 100) }} %</td>
+          <td data-label="Unent.">{{ "%.1f"|format(p.draw * 100) }} %</td>
+          <td data-label="Ausw.-Sieg">{{ "%.1f"|format(p.away_win * 100) }} %</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -22,18 +28,23 @@
   </section>
 
   <section class="section-tabelle">
-    <h2>Aktuelle Tabelle</h2>
+    <h2>📊 Aktuelle Tabelle</h2>
     <table>
       <thead>
-        <tr><th>Mannschaft</th><th>Spiele</th><th>Punkte</th><th>Tore : Gegentore</th></tr>
+        <tr>
+          <th>Mannschaft</th>
+          <th>Spiele</th>
+          <th>Punkte</th>
+          <th>Tore : Gegentore</th>
+        </tr>
       </thead>
       <tbody>
       {% for row in tabelle %}
         <tr>
-          <td>{{ row.team }}</td>
-          <td>{{ row.spiele }}</td>
-          <td>{{ row.punkte }}</td>
-          <td>{{ row.tore }} : {{ row.geg }}</td>
+          <td data-label="Mannschaft">{{ row.team }}</td>
+          <td data-label="Spiele">{{ row.spiele }}</td>
+          <td data-label="Punkte">{{ row.punkte }}</td>
+          <td data-label="Tore:Gegen">{{ row.tore }} : {{ row.geg }}</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -41,10 +52,18 @@
   </section>
 
   <section class="section-ergebnisse">
-    <h2>Ergebnisse bisheriger Spiele</h2>
+    <h2>📜 Ergebnisse bisheriger Spiele</h2>
     <ul>
     {% for s in spiele_history %}
-      <li>{{ s.zeit }} — {{ s.heim }} vs {{ s.auswärts }} {% if s.tore_heim is not none %} : {{ s.tore_heim }}-{{ s.tore_auswärts }}{% else %}(kein Ergebnis){% endif %}</li>
+      <li>
+        <strong>{{ s.zeit }}</strong> — 
+        {{ s.heim }} vs {{ s.auswärts }} 
+        {% if s.tore_heim is not none %}
+          <strong>{{ s.tore_heim|int }}:{{ s.tore_auswärts|int }}</strong>
+        {% else %}
+          <em>(kein Ergebnis)</em>
+        {% endif %}
+      </li>
     {% endfor %}
     </ul>
   </section>
