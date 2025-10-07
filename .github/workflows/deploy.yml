@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,22 +16,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python
+
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
+
       - name: Build site
-        run: |
-          python build.py
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+        run: python build.py
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # Der Ort, aus dem deployiert wird:
-          # docs ist generierter Output
-          # Der deploy-pages action nimmt artifacts, also zip docs, upload und deploy
-          # Standardmäßig ist Artefaktname "github-pages"
+          path: docs   # Pfad zu deinem generierten HTML / statischen Dateien
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
