@@ -505,11 +505,12 @@ table th:nth-child(6) {
     border: none;
     border-bottom: 1px solid #eee;
     position: relative;
-    padding-left: 50%;
+    padding: 0.75rem 0.875rem 0.75rem 50%;
     text-align: left !important;
     min-height: 40px;
-    display: flex;
-    align-items: center;
+    display: block;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
   
   td:last-child {
@@ -520,15 +521,52 @@ table th:nth-child(6) {
     content: attr(data-label);
     position: absolute;
     left: 0.875rem;
+    top: 0.75rem;
     width: 45%;
     padding-right: 0.5rem;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
     font-weight: 600;
     color: #667eea;
+    font-size: 0.85rem;
   }
   
   .section-ergebnisse li {
     font-size: 0.85rem;
     padding: 0.75rem 1rem;
+  }
+  
+  /* Match label responsiveness for mobile */
+  .match-label {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .match-label strong {
+    display: inline;
+    word-break: break-word;
+  }
+  
+  /* Adjust match probability container for better spacing */
+  .match-probability {
+    padding: 1rem;
+  }
+  
+  /* Reduce legend items wrapping on mobile */
+  .prob-legend {
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+  }
+  
+  .legend-item {
+    gap: 0.3rem;
+  }
+  
+  .color-box {
+    width: 16px;
+    height: 16px;
   }
 }
